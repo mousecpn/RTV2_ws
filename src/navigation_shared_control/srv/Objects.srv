@@ -1,4 +1,0 @@
-bool flag
----
-geometry_msgs/PoseArray goals
-geometry_msgs/PoseArray obstacles

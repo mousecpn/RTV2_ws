@@ -77,27 +77,15 @@ def keyboard_detection(panda ,velo):
 class BMINavigationSim(object):
     def __init__(self, offset):
         self.offset = np.array(offset)
-        self.LINK_EE_OFFSET = 0.05
-        self.initial_offset = 0.05
         self.workspace_limits = np.asarray([[0, 10.], [-9, 9], [-10, 10]])
         self.scale = 1
         self._numGoals = np.random.randint(2, 6)
         self._numObstacles = np.random.randint(3, 6)
         self._urdfRoot = pd.getDataPath()
-        self._blockRandom = 0.3
-        self.object_root = "/home/pinhao/Desktop/franka_sim"
+        self.object_root = "objects"
 
         self.eepose_pub = rospy.Publisher('/EE_pose', Pose, queue_size=1)
-        # self.cart_move_srv = rospy.Service('/CartMove', cartMove, self.handle_move_command)
-        self.vel_move_srv = rospy.Service('/VelMove', VelMove, self.handle_move_vel_command)
-        self.object_srv = rospy.Service('/objects_srv', initobjSrv, self.handle_objects_srv)
-        # self.grasp_srv = rospy.Service('/grasp_srv', Execute, self.pickPlaceRoutine)
         self._rviz_past_pub = rospy.Publisher("/rviz_traj_past", Path, queue_size=1)
-        # self._trajectory_follower = rospy.Service("/TrajMove", cartMove, self.handle_traj_move_command)
-        # self.stop_srv = rospy.Service('/Stop', cartMove, self.handle_stop_command)
-        
-        # self.traj_pred_sub = rospy.Subscriber('/Traj_pred', PoseArray, self.traj_pred_handler)
-        self.service = rospy.ServiceProxy('/VelMove', VelMove)
 
         self.past_trajectory = Path()
         self.future_trajectory = None
@@ -401,48 +389,6 @@ class BMINavigationSim(object):
             time.sleep(0.01)
         return
     
-    def handle_objects_srv(self, flag):
-        objects = objectsMsg()
-        goals = goalarrayMsg()
-        for idx in self.goal_ids:
-            translation,orientation = p.getBasePositionAndOrientation(idx)
-            pose_msg = goalMsg()
-            pose_msg.id = idx
-            pose_msg.center.position.x = translation[0]
-            pose_msg.center.position.y = translation[1]
-            pose_msg.center.position.z = translation[2]
-            pose_msg.center.orientation.x = orientation[0]
-            pose_msg.center.orientation.y = orientation[1]
-            pose_msg.center.orientation.z = orientation[2]
-            pose_msg.center.orientation.w = orientation[3]
-            grasp_point = PoseStamped()
-            grasp_point.pose.position.x = translation[0]
-            grasp_point.pose.position.y = translation[1]
-            grasp_point.pose.position.z = translation[2] #+ self.z_T
-            grasp_point.pose.orientation.x = 0.515299
-            grasp_point.pose.orientation.y = 0.478671
-            grasp_point.pose.orientation.z = -0.50345
-            grasp_point.pose.orientation.w = 0.501875
-            pose_msg.grasping_points.append(grasp_point)
-            goals.goal.append(pose_msg)
-        objects.goals = goals
-        
-        obstacles = []
-        for idx in self.obstacle_ids:
-            translation = p.getLinkState(idx,0)[0]
-            orientation = p.getLinkState(idx,0)[1]
-            pose_msg = Pose()
-            pose_msg.position.x = translation[0]
-            pose_msg.position.y = translation[1]
-            pose_msg.position.z = translation[2]
-            pose_msg.orientation.x = orientation[0]
-            pose_msg.orientation.y = orientation[1]
-            pose_msg.orientation.z = orientation[2]
-            pose_msg.orientation.w = orientation[3]
-            obstacles.append(pose_msg)
-        objects.obstacles = obstacles
-        
-        return objects
     
 
     def rviz_object_publisher(self):

@@ -7,7 +7,6 @@ import os
 import glob
 import random
 import rospy
-from navigation_shared_control.srv import cartMove,VelMove,Execute
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 from navigation_shared_control.msg import KeyCommand
 from nav_msgs.msg import Path
@@ -79,18 +78,10 @@ class BMINavigationSim(object):
         self._numObstacles = np.random.randint(1, 6)
         self._urdfRoot = pd.getDataPath()
         self._blockRandom = 0.3
-        self.object_root = "/home/pinhao/Desktop/franka_sim"
+        self.object_root = "objects"
 
         self.eepose_pub = rospy.Publisher('/EE_pose', Pose, queue_size=1)
-        # self.cart_move_srv = rospy.Service('/CartMove', cartMove, self.handle_move_command)
-        self.vel_move_srv = rospy.Service('/VelMove', VelMove, self.handle_move_vel_command)
-        # self.grasp_srv = rospy.Service('/grasp_srv', Execute, self.pickPlaceRoutine)
         self._rviz_past_pub = rospy.Publisher("/rviz_traj_past", Path, queue_size=1)
-        # self._trajectory_follower = rospy.Service("/TrajMove", cartMove, self.handle_traj_move_command)
-        # self.stop_srv = rospy.Service('/Stop', cartMove, self.handle_stop_command)
-        
-        # self.traj_pred_sub = rospy.Subscriber('/Traj_pred', PoseArray, self.traj_pred_handler)
-        self.service = rospy.ServiceProxy('/VelMove', VelMove)
 
         self.past_trajectory = Path()
         self.future_trajectory = None
