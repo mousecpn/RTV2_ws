@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="trajectron" type="TrajectronNodeBMI.py" name="assistance" output="screen" >
+        <param name="method_idx" type="int" value="3" /> 
+    </node>
+
+    <node pkg="trajectron" type="InitNode.py" name="Init" output="screen" >
+    </node>
+</launch>
