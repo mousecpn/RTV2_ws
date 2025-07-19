@@ -7,12 +7,8 @@ import os
 import glob
 import random
 import rospy
-from navigation_shared_control.srv import cartMove,VelMove,Execute
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
-from control_manip.srv import InitObj as initobjSrv
-from control_manip.msg import Goal as goalMsg
-from control_manip.msg import GoalArray as goalarrayMsg
-from control_manip.msg import Objects as objectsMsg
+
 
 from navigation_shared_control.msg import KeyCommand
 from nav_msgs.msg import Path
@@ -468,7 +464,7 @@ def isGoalOccluded(obstacles, goal):
     return False
 
 if __name__=="__main__":
-    rospy.init_node("franka_sim")
+    rospy.init_node("nav_sim")
     p.connect(p.GUI)
     # p.connect(p.DIRECT)
     # p.configureDebugVisualizer(p.COV_ENABLE_Y_AXIS_UP,1)
