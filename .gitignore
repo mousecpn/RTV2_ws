@@ -114,3 +114,4 @@ venv.bak/
 # custom
 .DS_Store
 /notebooks
+logs/
