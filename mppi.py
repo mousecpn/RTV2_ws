@@ -10,7 +10,7 @@ from model.gmm3d import GMM3D
 from model.gmm2d import GMM2D
 
 class MobileMPPI:
-    def __init__(self, horizon, dim, gamma, device, XY, dt):
+    def __init__(self, horizon, dim, gamma, device, dt):
         self.horizon = horizon
         self.action_dim = dim
         self.device = device
@@ -32,7 +32,6 @@ class MobileMPPI:
         # goal cost
         self.nu = 1
         self.log_sigma = np.log(self.nu**2)
-        self.XY = XY
         self.prob_grid = None
 
         # intent cost

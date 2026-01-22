@@ -182,27 +182,6 @@ class trajectron_service:
         self.y_range = self.workspace_limits[1]
         self.past_count = 0
 
-        x_min = self.x_range[0]
-        x_max = self.x_range[1]
-        y_min = self.y_range[0]
-        y_max = self.y_range[1]
-        self.resolution = 1.5
-        self.analysis_resolution = 0.5
-        self.XY_ana = torch.meshgrid([torch.arange(x_min, x_max, self.analysis_resolution), torch.arange(y_min, y_max, self.analysis_resolution)],indexing='ij')
-        self.XY = torch.meshgrid([torch.arange(x_min, x_max, self.resolution), torch.arange(y_min, y_max, self.resolution)],indexing='ij')
-        self.prob_grid = None
-        # self.grid_msg = OccupancyGrid()
-        # self.grid_msg.info.resolution = self.resolution
-        # self.grid_msg.info.width = torch.arange(x_min, x_max, self.resolution).shape[0]
-        # self.grid_msg.info.height = torch.arange(y_min, y_max, self.resolution).shape[0]
-        # self.grid_msg.info.origin.position.x = 0.0
-        # self.grid_msg.info.origin.position.y = -9.0
-        # self.grid_msg.info.origin.position.z = 0.0
-        # self.grid_msg.info.origin.orientation.x = 0.0
-        # self.grid_msg.info.origin.orientation.y = 0.0
-        # self.grid_msg.info.origin.orientation.z = 0.0
-        # self.grid_msg.info.origin.orientation.w = 1.0
-        # self.grid_msg.data = [0 for i in range(self.grid_msg.info.width*self.grid_msg.info.height)]
         self.device = self.trajectron.model.device
 
         self.mpc = MobileMPPI(horizon=self.ph, dim=2, gamma=0.9, device=self.device, XY=self.XY, dt=self.dt)

@@ -14,7 +14,7 @@ import sys
 # from franka_sim_world import keyboard_detection
 from threading import Thread, Lock
 
-from TrajectronNode import init_service
+from trajectron_nav_node import init_service
 import torch
 import json
 import matplotlib.pyplot as plt
@@ -253,8 +253,9 @@ def stepSimulation(iter):
 
 if __name__=="__main__":
     # set_random_seed(0)
-    # p.connect(p.GUI)
-    p.connect(p.DIRECT)
+    p.connect(p.GUI)
+    viz = False
+    # p.connect(p.DIRECT)
     # p.configureDebugVisualizer(p.COV_ENABLE_Y_AXIS_UP,1)
     
     p.setAdditionalSearchPath(pd.getDataPath())
@@ -285,44 +286,45 @@ if __name__=="__main__":
     iter_limit = 100
     for e in range(1,1+epsidoes):
         iter = 0
+        traj_service.reset(goals=np.array(avatar.goal_pos).reshape(-1,3)[:,[2,0,1]], obstacles=np.array(avatar.obs_pos).reshape(-1,3)[:,[2,0,1]])
         # if e<=29:
         #     avatar.reset(e)
         #     continue
 
         ###################### viz #########################
-        fig = plt.figure()
-        ax = plt.axes()
-        # plt.xlabel('Y-axis', fontsize=15) 
-        # plt.ylabel('X-axis', fontsize=15)
-        x_range = (-10, 10)
-        y_range = (-1, 10)
-        ax.axes.get_xaxis().set_visible(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.axes.xaxis.set_ticklabels([])
-        ax.axes.yaxis.set_ticklabels([])
-        # plt.axis("equal")
-        # ax.set_xlim([x_range[0], x_range[1]])
-        # ax.set_ylim([y_range[0], y_range[1]])
-        plt.tick_params(axis='both', labelsize=11)
-        ax.set_aspect('equal', adjustable='datalim')
-        
-        width = 1.3
-        # goals = goals - width/2
-        # obs = obs - width/2
-        for g in np.array(avatar.goal_pos).reshape(-1,3):
-            # circle = plt.Rectangle((g[0], g[-1]), width=1, height=1, color='g', fill=True, linewidth=2)
-            # ax.add_patch(circle)
-            g = g - width/2
-            circle = plt.Rectangle((g[0], g[-1]), width=width, height=width, facecolor='#4DAA59', fill=True, edgecolor='black', linewidth=1)
-            ax.add_patch(circle)
-        for o in np.array(avatar.obs_pos).reshape(-1,3):
-            # circle = plt.Rectangle((o[0],o[-1]), width=1., height=1., color='r', fill=True, linewidth=2)
-            o = o - width/2
-            circle = plt.Rectangle((o[0],o[-1]), width=width, height=width, facecolor='#E76D7E', fill=True, edgecolor='black', linewidth=1)
-            ax.add_patch(circle)
-        trajectory = []
+        if viz:
+            fig = plt.figure()
+            ax = plt.axes()
+            # plt.xlabel('Y-axis', fontsize=15) 
+            # plt.ylabel('X-axis', fontsize=15)
+            x_range = (-10, 10)
+            y_range = (-1, 10)
+            ax.axes.get_xaxis().set_visible(False)
+            ax.axes.get_yaxis().set_visible(False)
+            ax.axes.xaxis.set_ticklabels([])
+            ax.axes.yaxis.set_ticklabels([])
+            # plt.axis("equal")
+            # ax.set_xlim([x_range[0], x_range[1]])
+            # ax.set_ylim([y_range[0], y_range[1]])
+            plt.tick_params(axis='both', labelsize=11)
+            ax.set_aspect('equal', adjustable='datalim')
+            
+            width = 1.3
+            # goals = goals - width/2
+            # obs = obs - width/2
+            for g in np.array(avatar.goal_pos).reshape(-1,3):
+                # circle = plt.Rectangle((g[0], g[-1]), width=1, height=1, color='g', fill=True, linewidth=2)
+                # ax.add_patch(circle)
+                g = g - width/2
+                circle = plt.Rectangle((g[0], g[-1]), width=width, height=width, facecolor='#4DAA59', fill=True, edgecolor='black', linewidth=1)
+                ax.add_patch(circle)
+            for o in np.array(avatar.obs_pos).reshape(-1,3):
+                # circle = plt.Rectangle((o[0],o[-1]), width=1., height=1., color='r', fill=True, linewidth=2)
+                o = o - width/2
+                circle = plt.Rectangle((o[0],o[-1]), width=width, height=width, facecolor='#E76D7E', fill=True, edgecolor='black', linewidth=1)
+                ax.add_patch(circle)
         ###################### viz #########################
-        
+        trajectory = []
         while True:
             velo = [0,0,0]
             ##### initial movement #####
@@ -368,12 +370,13 @@ if __name__=="__main__":
                 out_of_time += 1
                 break
         ###################### viz #########################
-        trajectory = np.stack(trajectory, axis=0)
-        ax.plot(trajectory[:,0], trajectory[ :,1], '#34638D')
-        ax.scatter(trajectory[::2,0], trajectory[::2,1], s=5, c='#34638D')  
-        # plt.grid(True)
-        img_file_name = 'navigation_img/epsisode{}.pdf'.format(e)
-        plt.savefig(img_file_name, bbox_inches='tight', pad_inches=0.1)
+        if viz:
+            trajectory = np.stack(trajectory, axis=0)
+            ax.plot(trajectory[:,0], trajectory[ :,1], '#34638D')
+            ax.scatter(trajectory[::2,0], trajectory[::2,1], s=5, c='#34638D')  
+            # plt.grid(True)
+            img_file_name = 'navigation_img/epsisode{}.pdf'.format(e)
+            plt.savefig(img_file_name, bbox_inches='tight', pad_inches=0.1)
         ###################### viz #########################
 
     print("success rate:", success/epsidoes)

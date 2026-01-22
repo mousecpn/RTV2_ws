@@ -21,7 +21,7 @@ import zmqmsg
 import logging
 import tns
 import sys
-from .TrajectronNode import derivative_of, derivatives_of, map2d_bilinear_generation2
+from TrajectronNode import derivative_of, derivatives_of, map2d_bilinear_generation2
 
 from mppi import MobileMPPI
 import torch.distributions as td
@@ -75,15 +75,6 @@ class trajectron_service:
         self.y_range = self.workspace_limits[1]
         self.past_count = 0
 
-        x_min = self.x_range[0]
-        x_max = self.x_range[1]
-        y_min = self.y_range[0]
-        y_max = self.y_range[1]
-        self.resolution = 1.5
-        self.analysis_resolution = 0.5
-        self.XY_ana = torch.meshgrid([torch.arange(x_min, x_max, self.analysis_resolution), torch.arange(y_min, y_max, self.analysis_resolution)],indexing='ij')
-        self.XY = torch.meshgrid([torch.arange(x_min, x_max, self.resolution), torch.arange(y_min, y_max, self.resolution)],indexing='ij')
-        self.prob_grid = None
 
         self.device = self.trajectron.model.device
 
@@ -97,20 +88,14 @@ class trajectron_service:
 
         self.pred_v = np.array([0,0])
         return
-
-
-    def exe_log(self, pos):
-        self.traj_log.put(pos)
-        if len(self.traj_log.queue) > 10:
-            self.traj_log.get()
-
-    def query_context(self,):
-        response = self.object_srv(True)
-        goal_position, obstacles_postions = self.poseArray2nparray(response.goals), self.poseArray2nparray(response.obstacles)
-        self.goal_position = goal_position
-        self.obs_position = obstacles_postions
+    
+    def reset(self, goals, obstacles):
+        self.traj_log = Queue()
+        self.dist = None
+        self.goal_position = goals
+        self.obs_position = obstacles
+        self.op_count = 0
         return
-
 
     def trajectory_prediction(self, pos_msg, ):
         """
@@ -137,7 +122,6 @@ class trajectron_service:
         #     return [-9999,-9999,-9999]
         if len(self.traj_log.queue) >= 4 and self.op_count % self.interval == 0:
             t1 = time.time()
-            # self.query_context()
             trajectory = self.nparray2Traj(np.array(list(self.traj_log.queue)), goals=self.goal_position, obstacles=self.obs_position)
             with torch.no_grad():
                 self.user_model = None
@@ -145,7 +129,7 @@ class trajectron_service:
                                             self.ph,
                                             num_samples=1,
                                             z_mode=False,
-                                            gmm_mode=False,
+                                            gmm_mode=True,
                                             all_z_sep=False,
                                             full_dist=True,
                                             dist=True)
@@ -170,13 +154,13 @@ class trajectron_service:
             self.dist = y_dist
             self.v_dist = v_dist
 
-            pred_v = self.v_dist.get_at_time(0).mode().detach().cpu().numpy().reshape(-1)
-            pred_v = pred_v.tolist()
+            # pred_v = self.v_dist.get_at_time(0).mode().detach().cpu().numpy().reshape(-1)
+            # pred_v = pred_v.tolist()
 
             # if t1 is not None:
             #     print("model processing latency:", t2-t1)
-            # v_r, mpc_traj = self.mpc.plan_action(current_pos[:self.dim], None, self.dist, self.v_dist, self.goal_position, self.obs_position)
-            # pred_v = v_r.detach().cpu().numpy().tolist()
+            v_r, mpc_traj = self.mpc.plan_action(current_pos[:self.dim], None, self.dist, self.v_dist, self.goal_position, self.obs_position)
+            pred_v = v_r.detach().cpu().numpy().tolist()
         return pred_v
     
     def nparray2Traj(self, pose_array, goals=None, obstacles=None):
@@ -261,17 +245,6 @@ class trajectron_service:
         batch = (first_history_index, x_t, y_t[...,2:6], x_st_t, y_st_t[...,3:6])
         return batch
 
-    def nparray2PoseArray(self, traj_array):
-        traj_array = traj_array.reshape(-1,3)
-        traj_posearray = PoseArray()
-        ph = traj_array.shape[0]
-        for i in range(ph):
-            term = Pose()
-            term.position.x = traj_array[i,0]
-            term.position.y = traj_array[i,1]
-            term.position.z = traj_array[i,2]
-            traj_posearray.poses.append(term)
-        return traj_posearray
     
     
     def poseArray2nparray(self, pose_array_msg):
@@ -316,7 +289,7 @@ def init_service():
 
 
     # Load hyperparameters from json
-    config_path = "trajectron/src/config_bmi.json"
+    config_path = "config_bmi.json"
     if not os.path.exists(config_path):
         print('Config json not found!')
     with open(config_path, 'r', encoding='utf-8') as conf_json:
@@ -350,5 +323,5 @@ def init_service():
     trajectron.model.to(device)
     trajectron.model.eval()
 
-    traj_service = trajectron_service(trajectron, ph=12, method_idx=method_idx, logger=logger, timelimit=timelimit)
+    traj_service = trajectron_service(trajectron, ph=12)
     return traj_service
