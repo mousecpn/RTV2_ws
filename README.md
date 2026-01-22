@@ -26,6 +26,8 @@ python simple_planning_env.py
     ```bash
     python sim_env.py
     ```
+<img width="1044" height="823" alt="Screenshot from 2026-01-22 10-56-29" src="https://github.com/user-attachments/assets/757d25e8-7002-4a6f-8e44-dcc567eb1fcf" />
+
 
 ## 📄 License
 
