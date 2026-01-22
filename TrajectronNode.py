@@ -184,7 +184,7 @@ class trajectron_service:
 
         self.device = self.trajectron.model.device
 
-        self.mpc = MobileMPPI(horizon=self.ph, dim=2, gamma=0.9, device=self.device, XY=self.XY, dt=self.dt)
+        self.mpc = MobileMPPI(horizon=self.ph, dim=2, gamma=0.9, device=self.device, dt=self.dt)
 
         #### user model ##########
         self.user_sigma = 0.05
@@ -240,7 +240,7 @@ class trajectron_service:
                                             self.ph,
                                             num_samples=1,
                                             z_mode=False,
-                                            gmm_mode=False,
+                                            gmm_mode=True,
                                             all_z_sep=False,
                                             full_dist=True,
                                             dist=True,
@@ -322,9 +322,9 @@ class trajectron_service:
         return traj_posearray
     
 
-    def mpc_control(self, goal_position, obs_position, cur_position, velocity):
+    def mpc_control(self, goal_position, obs_position, cur_position):
         
-        v_r, mpc_traj = self.mpc.plan_action(cur_position[:self.dim], velocity , self.dist, self.v_dist, goal_position, obs_position)
+        v_r, mpc_traj = self.mpc.plan_action(cur_position[:self.dim], self.dist, self.v_dist, goal_position, obs_position)
         # velocity[:self.dim]
 
         return v_r.tolist(), mpc_traj
@@ -468,7 +468,7 @@ class trajectron_service:
                     
                         if self.dist is not None and (np.linalg.norm(newVelocity) > 0.01):
                             # prob, predicted_velo = self.score(self.goal_position, cur_position, newVelocity) # z-x -> xyz
-                            predicted_velo, mpc_traj = self.mpc_control(self.goal_position, self.obs_position, cur_position, np.array(newVelocity[:2])) # z-x -> xyz
+                            predicted_velo, mpc_traj = self.mpc_control(self.goal_position, self.obs_position, cur_position) # z-x -> xyz
                             exe_traj = mpc_traj.pop()
                             exe_traj = np.concatenate((exe_traj, np.zeros(exe_traj[...,-1:].shape)),axis=-1)
                             self.traj_msg = self.nparray2PoseArray(exe_traj)
@@ -628,7 +628,7 @@ if __name__=='__main__':
 
 
     # Load hyperparameters from json
-    config_path = "trajectron/src/config_bmi.json"
+    config_path = "config.json"
     if not os.path.exists(config_path):
         print('Config json not found!')
     with open(config_path, 'r', encoding='utf-8') as conf_json:
@@ -652,7 +652,7 @@ if __name__=='__main__':
                             log_writer,
                             device)
 
-    model = torch.load("/home/u0161364/Robot-TrajectronV2/checkpoints/Exp42_maxent_autoalpha_93.pth")
+    model = torch.load("model_checkpoint.pth")
 
     trajectron.model.node_modules = model
     trajectron.set_annealing_params()

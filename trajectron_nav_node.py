@@ -50,13 +50,6 @@ class trajectron_service:
     def __init__(self, trajectron, ph, modes=10):
         self.trajectron = trajectron
 
-        # hyper-parameter for shared control
-        self.gamma = 2 # amplification coefficient for GAF
-        self.nu = 0.95 # mamxium guidance of GAF
-        self.kappa = 30 # kappa for von mises distribution p_r_u 
-        self.probability_balance_coeff = 10
-
-
         # variable for trajectron prediction
         self.dist = None        
         self.traj_log = Queue()
@@ -117,9 +110,7 @@ class trajectron_service:
         self.op_count += 1
         if len(self.traj_log.queue) > 10:
             self.traj_log.get()
-        # validate whether out of workspace
-        # if current_pos[0] < self.workspace_limits[0,0] or current_pos[0] > self.workspace_limits[0,1] or current_pos[1] < self.workspace_limits[1,0] or current_pos[1] > self.workspace_limits[1,1]:
-        #     return [-9999,-9999,-9999]
+
         if len(self.traj_log.queue) >= 4 and self.op_count % self.interval == 0:
             t1 = time.time()
             trajectory = self.nparray2Traj(np.array(list(self.traj_log.queue)), goals=self.goal_position, obstacles=self.obs_position)
@@ -133,33 +124,11 @@ class trajectron_service:
                                             all_z_sep=False,
                                             full_dist=True,
                                             dist=True)
-                # y_dist, v_dist, predictions = self.trajectron.predict(trajectory,
-                #                             self.ph,
-                #                             num_samples=1,
-                #                             z_mode=True,
-                #                             gmm_mode=True,
-                #                             all_z_sep=False,
-                #                             full_dist=False,
-                #                             dist=True)
-                # y_dist, v_dist, predictions = self.trajectron.predict3(trajectory,
-                #                 self.workspace_limits,
-                #                 num_samples=1,
-                #                 z_mode=True,
-                #                 gmm_mode=True,
-                #                 all_z_sep=False,
-                #                 full_dist=False,
-                #                 dist=True,
-                #                 ph_limit=100)
-            # print("model inference time:", time.time()-t1)
+
             self.dist = y_dist
             self.v_dist = v_dist
 
-            # pred_v = self.v_dist.get_at_time(0).mode().detach().cpu().numpy().reshape(-1)
-            # pred_v = pred_v.tolist()
-
-            # if t1 is not None:
-            #     print("model processing latency:", t2-t1)
-            v_r, mpc_traj = self.mpc.plan_action(current_pos[:self.dim], None, self.dist, self.v_dist, self.goal_position, self.obs_position)
+            v_r, mpc_traj = self.mpc.plan_action(current_pos[:self.dim], self.dist, self.v_dist, self.goal_position, self.obs_position)
             pred_v = v_r.detach().cpu().numpy().tolist()
         return pred_v
     
@@ -216,46 +185,6 @@ class trajectron_service:
         batch = (first_history_index, x_t, y_t[...,dim//3:2*dim//3], x_st_t, y_st_t[...,dim//3:2*dim//3], {'map':map_tensor.unsqueeze(0).cuda()})
         return batch
 
-    
-    def poseArray2Traj(self, pose_array_msg):
-        # num_steps = should be 10
-        num_steps = len(pose_array_msg.poses)
-        data = []
-        for i in range(num_steps):
-            data.append(np.array([pose_array_msg.poses[i].position.x, pose_array_msg.poses[i].position.y, pose_array_msg.poses[i].position.z]))
-        term = np.stack(data, axis=0)*self.scale
-        vel_term = derivatives_of(term, dt=self.dt)
-        acc_term = derivatives_of(vel_term, dt=self.dt)
-        data = np.concatenate((term,vel_term,acc_term),axis=-1)
-        first_history_index = torch.LongTensor(np.array([0])).cuda()
-        x = data[2:,:]
-        y = np.zeros((12,9))
-        std = np.array([3,3,3,2,2,2,1,1,1])
-        # std = np.array([1,1,1,1,1,1,1,1,1])
-
-        rel_state = np.zeros_like(x[0])
-        rel_state[0:3] = np.array(x)[-1, 0:3]
-
-        x_st = np.where(np.isnan(x), np.array(np.nan), (x - rel_state) / std)
-        y_st = np.where(np.isnan(y), np.array(np.nan), y / std)
-        x_t = torch.tensor(x, dtype=torch.float).unsqueeze(0).cuda()
-        y_t = torch.tensor(y, dtype=torch.float).unsqueeze(0).cuda()
-        x_st_t = torch.tensor(x_st, dtype=torch.float).unsqueeze(0).cuda()
-        y_st_t = torch.tensor(y_st, dtype=torch.float).unsqueeze(0).cuda()
-        batch = (first_history_index, x_t, y_t[...,2:6], x_st_t, y_st_t[...,3:6])
-        return batch
-
-    
-    
-    def poseArray2nparray(self, pose_array_msg):
-        # num_steps = should be 10
-        num_steps = len(pose_array_msg.poses)
-        data = []
-        for i in range(num_steps):
-            data.append(np.array([pose_array_msg.poses[i].position.x, pose_array_msg.poses[i].position.y, pose_array_msg.poses[i].position.z]))
-        data = np.stack(data,axis=0)
-        return data
-
 
 
 def init_service():
@@ -289,7 +218,7 @@ def init_service():
 
 
     # Load hyperparameters from json
-    config_path = "config_bmi.json"
+    config_path = "config.json"
     if not os.path.exists(config_path):
         print('Config json not found!')
     with open(config_path, 'r', encoding='utf-8') as conf_json:
